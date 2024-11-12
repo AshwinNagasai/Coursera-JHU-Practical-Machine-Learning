@@ -1,0 +1,212 @@
+---
+title: "Practical Machine Learning Project"
+author: "Ashwin Sai Murali Neelakandan"
+date: "11/11/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction  
+
+The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants who were asked to perform barbell lifts correctly and incorrectly in 5 different ways, to predict the manner in which the participants did the exercise.  
+
+## Data  
+  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.   
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: 
+http://groupware.les.inf.puc-rio.br/har
+  
+### Loading the necessary packages  
+```{r}
+library(caret)
+library(lattice)
+library(ggplot2)
+library(kernlab)
+library(randomForest)
+library(corrplot)
+library(rpart.plot)
+```  
+
+### Loading and Data Preprocessing  
+```{r, cache=TRUE}
+raw_train <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+raw_test <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+# Looking at the dimensions of the training and test data  
+dim(raw_train)
+dim(raw_test)
+```  
+
+Seeing if the data has any NA values and then replacing most of them with 0
+```{r}
+# Seeing which cases have no missing values
+sum(complete.cases(raw_train))
+```
+  
+  
+Selecting and replacing the NA values in both training and test sets  
+```{r}
+raw_train <- raw_train[, colMeans(is.na(raw_train)) < .9]
+test_data <- raw_test[, colMeans(is.na(raw_test))<.9]
+# Removing columns which are irrelevant to the outcome from the raw training data
+raw_train <- raw_train[, -c(1:7)]
+```  
+
+Removing near zero variance variables from the raw training set
+```{r}
+# For training set
+nearzvar1 <- nearZeroVar(raw_train)
+raw_train <- raw_train[, -nearzvar1]
+# Looking at both training and testing set dimensions after pre-processing
+dim(raw_train)
+```  
+
+### Splitting the Training dataset  
+
+```{r, cache=TRUE}
+# Setting a seed for reproducibility
+set.seed(6583)
+# Partitioning  the cleaned dataset into training and validation data sets
+inData <- createDataPartition(y=raw_train$classe, p=0.7, list = FALSE)
+Traindata <- raw_train[inData,]
+Validdata <- raw_train[-inData,]
+```  
+The cleaned data was split into a training set (70%) and a validation set (30%) which will be used for cross validation purposes.  
+
+```{r}
+# Converting the classe variable into a factor variable
+Traindata$classe <- as.factor(Traindata$classe)
+Validdata$classe <- as.factor(Validdata$classe)
+# Setting up a control to use 5-fold cross validation for Decision Trees, Random Forests, and Support Vector Machine models
+crossvalid_control <- trainControl(method="cv", number=5, verboseIter=FALSE)
+```  
+
+## Model Building 
+
+Trying fit the prediction models based on a few popular models:  
+i. Decision Trees  
+ii. Random Forests    
+iii. Support Vector Machines   
+iv. Generalized Boosting   
+  
+### Decision Trees  
+
+```{r, cache=TRUE}
+# Creating a Decision tree prediction model the rpart method
+Tree_mod <- train(classe ~ ., data = Traindata, method = "rpart", 
+                  trControl = crossvalid_control)
+# Applying the model to the validation set for the prediction
+Tree_pred <- predict(Tree_mod, Validdata)
+Tree_cfm <- confusionMatrix(Tree_pred, Validdata$classe)
+Tree_cfm
+Tree_accuracy <- Tree_cfm$overall[1]
+Tr_outsamperror <- 1 - Tree_accuracy
+```  
+
+The accuracy obtained for the Decision trees model is `r Tree_accuracy` and the out of sample error rate is `r Tr_outsamperror`   
+
+### Random Forests
+
+```{r, cache=TRUE}
+# Creating a Random Forests prediction model with 3-fold cross validation
+RF_mod <- train(classe~., Traindata, method = "rf", 
+                trControl = crossvalid_control)
+# Applying the model to the validation set for the prediction
+RF_pred <- predict(RF_mod, Validdata)
+RF_cfm <- confusionMatrix(RF_pred, Validdata$classe)
+RF_cfm
+RF_accuracy <- RF_cfm$overall[1]
+RF_outsamperror <- 1 - RF_accuracy
+```  
+The accuracy obtained for the Random Forests model is`r RF_accuracy` and the out of sample error rate is `r RF_outsamperror`  
+  
+### Support Vector Machine  
+
+```{r, cache=TRUE}
+# Creating a Support Vector Machine prediction model with 3-fold cross validation
+SVM_mod <- train(classe~., Traindata, method = "svmLinear",
+                 trControl = crossvalid_control)
+# Applying the model to the validation set for the prediction
+SVM_pred <- predict(SVM_mod, Validdata)
+SVM_cfm <- confusionMatrix(SVM_pred, Validdata$classe)
+SVM_cfm
+SVM_accuracy <- SVM_cfm$overall[1]
+SVM_outsamperror <- 1 - SVM_accuracy
+```   
+The accuracy obtained for the Support Vector Machine model is`r SVM_accuracy` and the out of sample error rate is `r SVM_outsamperror`  
+    
+### Generalized Boosting  
+
+```{r, cache=TRUE}
+# Setting up a control to use repeated 5-fold cross validation for the Generalized Boosting model
+Gbm_Control <- trainControl(method = "repeatedcv", number = 5, verboseIter = FALSE)
+# Creating a Generalized Boosting prediction model with 3-fold cross validation
+Gbm_mod <- train(classe~., Traindata, method = "gbm", 
+                 trControl = Gbm_Control, 
+                 verbose = FALSE)
+# Applying the model to the validation set for the prediction
+Gbm_pred <- predict(Gbm_mod, Validdata)
+Gbm_cfm <- confusionMatrix(Gbm_pred, Validdata$classe)
+Gbm_cfm
+Gbm_accuracy <- Gbm_cfm$overall[1]
+Gbm_outsamperror <- 1 - Gbm_accuracy
+```   
+The accuracy obtained for the Gradient Boosted Trees model is`r Gbm_accuracy` and the out of sample error rate is `r Gbm_outsamperror` 
+
+### Selecting the optimal model  
+
+Creating a table with Accuracy and out of sample error rates for all the above models  
+
+```{r}
+model_names = c("Tree", "RandomForests", "SupportVectorMachine", "GeneralizedBoosting")
+Accuracy <- round(c(Tree_accuracy, RF_accuracy, SVM_accuracy, Gbm_accuracy), 3)
+Out_of_Sample_Error <- 1-Accuracy
+data.frame(Accuracy=Accuracy, Out_of_Sample_Error_Rate = Out_of_Sample_Error, row.names = model_names)
+```  
+
+Based on the results observed, the optimal model is the Random Forests model with accuracy of `r RF_accuracy` and the out of sample error rate of `r RF_outsamperror` . The Gradient Tree with Boosting model comes second best with accuracy of `r Gbm_accuracy` and the out of sample error rate of `r Gbm_outsamperror`. 
+  
+Based on the results observed, the Random Forests model is selected as the optimal model.  
+
+##  Predicting on the Test Set  
+
+```{r}
+Pred_Results <- predict(RF_mod, test_data)
+Pred_Results
+```  
+  
+## Appendix: Plots  
+  
+Correlation Matrix of variables in the training set  
+
+```{r}
+corr_matrix <- cor(Traindata[, -length(names(Traindata))])
+corrplot(corr_matrix, method = "circle")
+```  
+
+Plotting the different models  
+```{r}
+# Plotting Decision Tree model
+plot(Tree_mod)
+# Visualizing the Decision Tree model
+rpart.plot(Tree_mod$finalModel, main = "Decision Tree Model")
+# Plotting Random Forests model
+plot(RF_mod)
+# Looking at the Variable (Feature) Importance Plot
+varImpPlot(RF_mod$finalModel)
+# Plotting Gradient Boosted Trees model
+plot(Gbm_mod)
+```  
+
+
