@@ -2,7 +2,9 @@
 title: "Practical Machine Learning Project"
 author: "Ashwin Sai Murali Neelakandan"
 date: "11/11/2024"
-output: html_document
+output: 
+  html_document: 
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
@@ -203,9 +205,7 @@ plot(Tree_mod)
 rpart.plot(Tree_mod$finalModel, main = "Decision Tree Model")
 # Plotting Random Forests model
 plot(RF_mod)
-# Looking at the Variable (Feature) Importance Plot
-varImpPlot(RF_mod$finalModel)
-# Plotting Gradient Boosted Trees model
+# Plotting the Generalized Boosting Model
 plot(Gbm_mod)
 ```  
 

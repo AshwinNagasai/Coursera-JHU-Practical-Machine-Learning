@@ -493,17 +493,10 @@ plot(RF_mod)
 ![](Practical-Machine-Learning-Project-Report_files/figure-html/unnamed-chunk-15-3.png)<!-- -->
 
 ``` r
-# Looking at the Variable (Feature) Importance Plot
-varImpPlot(RF_mod$finalModel)
-```
-
-![](Practical-Machine-Learning-Project-Report_files/figure-html/unnamed-chunk-15-4.png)<!-- -->
-
-``` r
-# Plotting Gradient Boosted Trees model
+# Plotting the Generalized Boosting Model
 plot(Gbm_mod)
 ```
 
-![](Practical-Machine-Learning-Project-Report_files/figure-html/unnamed-chunk-15-5.png)<!-- -->
+![](Practical-Machine-Learning-Project-Report_files/figure-html/unnamed-chunk-15-4.png)<!-- -->
 
 
